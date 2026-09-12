@@ -1,0 +1,16 @@
+# binary
+/keyway
+
+# test artifacts
+*.test
+*.out
+
+# OS
+.DS_Store
+
+# Per-project Claude Code state — but model-tiers/ is committed project
+# content (this repo's own keyway tier files), not session-local state,
+# so it's carved out. Anything else under .claude/ (settings.local.json,
+# caches) stays ignored.
+/.claude/*
+!/.claude/model-tiers/
