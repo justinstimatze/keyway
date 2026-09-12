@@ -11,39 +11,111 @@ correctly-shaped key.
 
 ## Demo
 
-Two tier files, genuinely opposite instructions, no Claude Code session
-required to see the effect:
+Two tier files, genuinely opposite instructions, the same prompt against
+the same file, run through real Claude Code sessions — not a mechanism
+check, the actual payoff:
 
 ```bash
-mkdir -p demo/.claude/model-tiers
-
-cat > demo/.claude/model-tiers/opus.md <<'EOF'
-Trust your own judgment on ambiguous edge cases — don't narrate every
-step, just make the change and report the result.
-EOF
+mkdir -p demo/.claude/model-tiers demo-config
 
 cat > demo/.claude/model-tiers/haiku.md <<'EOF'
-Before editing any file, restate your plan in one sentence first. If
-anything is ambiguous, stop and ask rather than guessing.
+Before making any change, state your plan in exactly one sentence
+starting with "Plan:". Then make the change. After the change, report
+only "Done." and the filename — no other commentary.
 EOF
 
+cat > demo/.claude/model-tiers/opus.md <<'EOF'
+Skip any plan statement. Make the change directly, then explain in two
+sentences what you changed and why you chose that wording over an
+alternative.
+EOF
+
+cat > demo/hello.go <<'EOF'
+package main
+
+import "fmt"
+
+func main() {
+	fmt.Println("hello")
+}
+EOF
+
+cat > demo-config/settings.json <<EOF
+{
+  "hooks": {
+    "SessionStart": [{ "matcher": "", "hooks": [{ "type": "command", "command": "$(which keyway)" }] }],
+    "PostModelSwitch": [{ "matcher": "", "hooks": [{ "type": "command", "command": "$(which keyway)" }] }]
+  }
+}
+EOF
+
+cd demo
+printf '%s\n' \
+  '{"type":"user","message":{"role":"user","content":"/model haiku"}}' \
+  '{"type":"user","message":{"role":"user","content":"Add a one-line comment above main() in hello.go explaining what it does."}}' \
+  | CLAUDE_CONFIG_DIR="$PWD/../demo-config" claude -p --input-format stream-json \
+      --output-format stream-json --dangerously-skip-permissions \
+  | jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="text") | .text'
+```
+
+```
+Set model to `Haiku 4.5` for this session only
+Plan: Add a comment above main() explaining that it prints a hello message.
+Done. hello.go
+```
+
+Reset `hello.go` and run the same two lines again with `/model opus` in
+place of `/model haiku`:
+
+```
+Set model to `Opus 5` for this session only
+Added `// main prints a greeting to standard output.` at hello.go:5.
+
+I wrote it in Go doc-comment form (starting with the identifier name,
+full sentence) rather than something like `// entry point` — the latter
+restates what `func main` already tells a Go reader, while this says
+what the program actually does.
+```
+
+One states a plan, then reports tersely with no elaboration. The other
+skips the plan, acts, then explains a wording tradeoff. Same file, same
+prompt — the difference is entirely the tier file the active model
+happened to read.
+
+**Why `/model <name>` mid-session, not a plain `--model` flag at
+startup**: it looks like `claude -p --model haiku ...` should trigger
+this more directly, but in this author's testing it doesn't reliably —
+`claude -p`'s `SessionStart` event carries no `model` field at all (see
+[SECURITY.md](SECURITY.md#known-limitations-document-only)), so a
+model-specific tier never gets picked on session start alone. Switching
+model *during* the session fires `PostModelSwitch`, which does carry it
+— the one path confirmed to. Type `/model haiku` into an ordinary
+interactive session and the mechanism is the same; the two-line JSONL
+above just scripts that switch so this demo runs non-interactively.
+
+**Same effect, zero tokens, no model switch needed** — pipe synthetic
+hook JSON straight into the binary:
+
+```bash
 echo '{"hook_event_name":"SessionStart","model":"claude-opus-5","cwd":"'"$PWD"'/demo"}' | keyway
 echo '{"hook_event_name":"SessionStart","model":"claude-haiku-4-5","cwd":"'"$PWD"'/demo"}' | keyway
 ```
 
 ```
-Trust your own judgment on ambiguous edge cases — don't narrate every
-step, just make the change and report the result.
+Skip any plan statement. Make the change directly, then explain in two
+sentences what you changed and why you chose that wording over an
+alternative.
 ```
 
 ```
-Before editing any file, restate your plan in one sentence first. If
-anything is ambiguous, stop and ask rather than guessing.
+Before making any change, state your plan in exactly one sentence
+starting with "Plan:". Then make the change. After the change, report
+only "Done." and the filename — no other commentary.
 ```
 
-Same mechanism, same two files, either one's content — real Claude Code
-wiring just replaces the hand-typed JSON above with what Claude Code
-actually pipes in.
+This only proves file selection, not behavior — the real Claude Code
+run above is the actual demonstration; this is the free, deterministic
+way to check the mechanism in isolation.
 
 **Global and project layers compose**, global first. A global tier
 (`CLAUDE_CONFIG_DIR` stands in for `~/.claude` here, so this doesn't

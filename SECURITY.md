@@ -77,7 +77,14 @@ control can redirect a filename to content outside it.
   with `model` set explicitly via `--model` at launch. The docs name
   exactly two cases where `model` can be omitted: after `/clear`, or a
   conversation-recovery restore. A fresh `startup` session is neither.
-  Checked the installed binary's own schema directly
+  Reproduced independently while building the README's live-demo
+  section: a logger swapped in for the hook command captured the exact
+  raw stdin `claude -p --model haiku ...` sent, and it carried only
+  `session_id`, `transcript_path`, `cwd`, `hook_event_name`, and
+  `source` — no `model` field, regardless of `--model`. This is why the
+  demo switches model mid-session via `PostModelSwitch` instead of
+  relying on `--model` at startup. Checked the installed binary's own
+  schema directly
   (`model:o().optional()` — confirms the field is legitimately optional
   in the type, says nothing about when it's actually populated) rather
   than guess a cause. No explanation found. There's no code-level fix

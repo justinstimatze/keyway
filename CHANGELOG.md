@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Replaced the README's primary demo with a real Claude Code run: the
+  same prompt against the same file, under two tier files with genuinely
+  opposite instructions, showing Claude's actual reply shape differ —
+  one states a plan then reports tersely, the other skips the plan and
+  explains a wording tradeoff. The prior demo only proved file
+  selection, never behavior. Building it surfaced a third independent
+  reproduction of the `model`-missing-from-headless-`SessionStart` gap
+  (a raw-stdin logger confirmed it directly): the demo switches model
+  mid-session via `PostModelSwitch` instead of a plain `--model` flag
+  for exactly that reason, documented in SECURITY.md. The old JSON-pipe
+  demo stays as the zero-token, no-model-switch mechanism check.
 - Added `keyway install`/`uninstall`/`status`, replacing hand-edited JSON
   as the primary wiring path. `install` prints what it would change and
   writes nothing until `--write` is passed; repoints an existing
