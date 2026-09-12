@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.2.0
 
 - Replaced the README's primary demo with a real Claude Code run: the
   same prompt against the same file, under two tier files with genuinely

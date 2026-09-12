@@ -163,7 +163,7 @@ context for the next turn. A missing model field just means no
 model-specific tier *file* gets chosen; `_base.md`, if one exists, still
 applies, since it isn't model-specific in the first place.
 
-**Tier content lives in two places, both optional:**
+**Tier content lives in two optional places:**
 
 - `~/.claude/model-tiers/` — global, every project
 - `<project>/.claude/model-tiers/` — nearest `.claude/model-tiers` found
